@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -28,10 +29,44 @@ func main () {
 	}
 	secret_key := os.Getenv("SECRET_KEY");
 	accounts := []Account{};
-	fmt.Println(secret_key)
-	fmt.Println(accounts)
 
-	getMenu(&accounts, secret_key)
+	isExit := false;
+
+	for {
+		if(isExit) {
+			saveAccountsToFile(accounts, "accounts.json")
+			break
+		}
+		getMenu(&accounts, secret_key)
+	}
+}
+
+
+func saveAccountsToFile(accounts []Account, filename string) error {
+	data, err := json.MarshalIndent(accounts, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(filename, data, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func loadAccountsFromFile(filename string) ([]Account, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	var accounts []Account
+	err = json.Unmarshal(data, &accounts)
+	if err != nil {
+		return nil, err
+	}
+	return accounts, nil
 }
 
 
