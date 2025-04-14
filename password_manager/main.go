@@ -32,12 +32,21 @@ func main () {
 
 	isExit := false;
 
+	_, err := os.Stat("accounts.json")
+	if err == nil {
+		accounts, err = loadAccountsFromFile("accounts.json")
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Данные восстановлены: %v\n", len(accounts))
+	}
+
 	for {
 		if(isExit) {
 			saveAccountsToFile(accounts, "accounts.json")
 			break
 		}
-		getMenu(&accounts, secret_key)
+		getMenu(&accounts, secret_key, &isExit)
 	}
 }
 
@@ -140,11 +149,11 @@ func getAcc(accounts []Account, field string, searchQuery string) Account {
 	for _, account := range accounts {
 		switch field {
 		case "url":
-			if account.URL == searchQuery {
+			if strings.Contains(account.URL,searchQuery) {
 				return account
 			}
 		case "login":
-			if account.Login == searchQuery {
+			if strings.Contains(account.Login,searchQuery)  {
 				return account
 			}
 		}
@@ -153,7 +162,7 @@ func getAcc(accounts []Account, field string, searchQuery string) Account {
 }
 
 
-func getMenu(accounts* []Account, secret_key string) []Account {
+func getMenu(accounts* []Account, secret_key string, isExit *bool) []Account {
 	
 
 	fmt.Println(`__Менеджер паролей__
@@ -231,8 +240,9 @@ func getMenu(accounts* []Account, secret_key string) []Account {
 		*accounts = append(accs[:transformedStrToInt], accs[transformedStrToInt+1:]...)
 		fmt.Println("Аккаунт успешно удалён")
 		return *accounts
-	
 	case "6":
+		*isExit = true;
+		return *accounts
 	default:
 		fmt.Println("Такого дейсвия нет")
 	}
