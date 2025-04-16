@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -40,6 +41,15 @@ func main () {
 		}
 		fmt.Printf("Данные восстановлены: %v\n", len(accounts))
 	}
+
+	http.HandleFunc("/hello", func(w http.ResponseWriter, req *http.Request){
+		_,err := w.Write([]byte("hello"))
+		if err != nil {
+			log.Println(err)
+		}
+	})
+
+	log.Println(http.ListenAndServe(":9090", nil))
 
 	for {
 		if(isExit) {
