@@ -2,18 +2,15 @@ package main
 
 import (
 	"bufio"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+
+	encryption "password-manager-app/pkgs"
 
 	"github.com/joho/godotenv"
 )
@@ -42,10 +39,41 @@ func main () {
 		fmt.Printf("Данные восстановлены: %v\n", len(accounts))
 	}
 
-	http.HandleFunc("/hello", func(w http.ResponseWriter, req *http.Request){
-		_,err := w.Write([]byte("hello"))
-		if err != nil {
-			log.Println(err)
+	http.HandleFunc("/account", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+	
+		switch req.Method {
+		case "GET":
+			jsonData, err := json.Marshal(accounts)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Write(jsonData)
+	
+		case "POST":
+			var newAccount Account
+			err := json.NewDecoder(req.Body).Decode(&newAccount)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			encryptedPass, err := encryption.EncryptPass(newAccount.Password, []byte(secret_key))
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+	
+			newAccount.Password = encryptedPass
+			accounts = append(accounts, newAccount)
+	
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(newAccount)
+	
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			fmt.Fprintf(w, `{"error": "Method not allowed"}`)
 		}
 	})
 
@@ -88,57 +116,6 @@ func loadAccountsFromFile(filename string) ([]Account, error) {
 	return accounts, nil
 }
 
-
-func encryptPass(plainText string, key []byte) (string, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return "", err
-	}
-
-	ciphertext := gcm.Seal(nonce, nonce, []byte(plainText), nil)
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
-}
-
-func decryptPass(cipherText string, key []byte) (string, error) {
-	cipherTextBytes, err := base64.StdEncoding.DecodeString(cipherText)
-	if(err != nil){
-		return "", err
-	}
-	block, err := aes.NewCipher(key)
-
-	if(err != nil){
-		return "", err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-
-	if(err != nil){
-		return "", err
-	}
-
-	nonceSize := gcm.NonceSize()
-	
-	if len(cipherTextBytes) < nonceSize {
-		return "", fmt.Errorf("ciphertext too short")
-	}
-	nonce, ciphertext := cipherTextBytes[:nonceSize], cipherTextBytes[nonceSize:]
-	plainText, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return "", err
-	}
-
-	return string(plainText), nil
-}
 	
 func readLine (inputText string) (string, error){
 	reader := bufio.NewReader(os.Stdin);
@@ -192,12 +169,12 @@ func getMenu(accounts* []Account, secret_key string, isExit *bool) []Account {
 		login, _ := readLine("Введите ваш логин: ")
 		password , _:= readLine("Введите ваш пароль: ")
 		
-		encryptPassword, _ := encryptPass(strings.TrimSpace(password), []byte(secret_key))
+		EncryptPassword, _ := encryption.EncryptPass(strings.TrimSpace(password), []byte(secret_key))
 
 		newMap := map[string]string{
 			"url": strings.TrimSpace(url),
 			"login": strings.TrimSpace(login),
-			"password": encryptPassword,
+			"password": EncryptPassword,
 		}
 
 		newAccount := Account{
@@ -211,7 +188,7 @@ func getMenu(accounts* []Account, secret_key string, isExit *bool) []Account {
 		return *accounts
 	case "2":
 		for index, account := range *accounts {
-			decryptedPass, _ := decryptPass(account.Password, []byte(secret_key));
+			decryptedPass, _ := encryption.DecryptPass(account.Password, []byte(secret_key));
 
 			fmt.Printf("%v. URL: %s, Login: %s, Password: %s\n", index, account.URL, account.Login, decryptedPass)
 		}
@@ -219,7 +196,7 @@ func getMenu(accounts* []Account, secret_key string, isExit *bool) []Account {
 		searchQuery, _ := readLine("Введите url: ")
 		account := getAcc(*accounts, "url", strings.TrimSpace(searchQuery))
 		if(account.Password != ""){
-			decryptedPass, _ := decryptPass(account.Password, []byte(secret_key))
+			decryptedPass, _ := encryption.DecryptPass(account.Password, []byte(secret_key))
 			fmt.Printf("URL: %s, Login: %s, Password: %s\n", account.URL, account.Login, decryptedPass)
 		}else {
 			fmt.Println("Аккаунт не найден")
@@ -229,7 +206,7 @@ func getMenu(accounts* []Account, secret_key string, isExit *bool) []Account {
 		searchQuery, _ := readLine("Введите login: ")
 		account := getAcc(*accounts, "login", strings.TrimSpace(searchQuery))
 		if(account.Password != ""){
-			decryptedPass, _ := decryptPass(account.Password, []byte(secret_key))
+			decryptedPass, _ := encryption.DecryptPass(account.Password, []byte(secret_key))
 			fmt.Printf("\nURL: %s, Login: %s, Password: %s\n", account.URL, account.Login, decryptedPass)
 		}else {
 			fmt.Println("Аккаунт не найден")
