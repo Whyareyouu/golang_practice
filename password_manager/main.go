@@ -70,21 +70,30 @@ func main () {
 	
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(newAccount)
-	
+			
+			saveAccountsToFile(accounts, "accounts.json")
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			fmt.Fprintf(w, `{"error": "Method not allowed"}`)
 		}
 	})
 
-	log.Println(http.ListenAndServe(":9090", nil))
+	fmt.Println(`Выберите вариант
+	1. Web
+	2. Terminal`)
 
-	for {
-		if(isExit) {
-			saveAccountsToFile(accounts, "accounts.json")
-			break
+	userChoise, _ := readLine("Выберите вариант взаимодействия")
+	if(strings.TrimSpace(userChoise) == "1"){
+		log.Println(http.ListenAndServe(":9090", nil))
+	}
+	if(strings.TrimSpace(userChoise) == "2"){
+		for {
+			if(isExit) {
+				saveAccountsToFile(accounts, "accounts.json")
+				break
+			}
+			getMenu(&accounts, secret_key, &isExit)
 		}
-		getMenu(&accounts, secret_key, &isExit)
 	}
 }
 

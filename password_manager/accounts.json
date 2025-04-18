@@ -8,5 +8,20 @@
     "URL": "xuy.com",
     "Login": "login123",
     "Password": "hViDEJyh4iBX1IK96xZYrKb0bDt0J/UdpaL0TdFn4jNgEw=="
+  },
+  {
+    "URL": "1",
+    "Login": "somelogin",
+    "Password": "Gm4IblUC4Fb60LPoNFFtBLAwu2mMg1awa6IYTIXoqbs+VZ9+KTP8sQ=="
+  },
+  {
+    "URL": "some_new_url",
+    "Login": "test",
+    "Password": "pzIRf9FOxtjhxxSSxkvqIpQE9AIMuk2N44D2lTynQyI="
+  },
+  {
+    "URL": "example_1.com",
+    "Login": "user123",
+    "Password": "4NqLnCbR77vc9yPjRYfIjbnIjuGJgKV8y61v/wUsaOqLj0i8D90="
   }
 ]
